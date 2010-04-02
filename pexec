@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 
+use strict;
+use warnings;
+
 my %arg_cmds = (
 	add	=> sub {
 		require ParallelExec::Adder;
