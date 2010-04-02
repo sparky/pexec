@@ -1,8 +1,37 @@
 pexec - easily run multiple commands in parallel
 
 
+USAGE:
+* Instalation (do it once):
+  - copy ParallelExec to some directory perl is looking into, you can check
+    which those are with this command: perl -le 'print "@INC"'
+  - put "pexec" command to some directory from $PATH
+
+* Startup (do it at beggining of any session):
+  - start pexec server:
+    $ pexec server &
+  - start as many pexec workers as you wish, each one in separate
+    console/terminal/screen window/tmux slice, i.e.:
+    $ for N in $(seq $(getconf _NPROCESSORS_ONLN)); do \
+        ( xterm -e pexec worker & ); \
+      done
+  - TIP: you should prepare a shell script which does that automatically
+
+* Use it (do it as often as you wish):
+  - prefix each command you want to run in parallel with "pexec add"
+    $ pexec add convert -verbose -scale 1024x1024 "$F" "_/$F"
+    $ pexec add lame -h --abr 160 "$F" "_/$F"
+    $ pexec add mencoder -ovc [something something] -o out.avi in.avi
+  - if you need to make sure all processes are finished before continuing
+    (useful in scripts) call:
+    $ pexec wait || echo "At least $? processes failed"
+  - TIP: use some short alias for pexec add:
+    $ alias p="pexec add"
+
+
 TODO:
 - fix "pexec append"
 - more robust workers; make sure workers are alive, restart job if worker dies
 - add "pexec set -e" - it should kill all remaining jobs from ppid and not
   allow new ones until "pexec wait"
+- allow longer commands / env
