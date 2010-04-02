@@ -1,0 +1,44 @@
+#!/usr/bin/perl
+
+my %arg_cmds = (
+	add	=> sub {
+		require ParallelExec::Adder;
+		return &ParallelExec::Adder::add;
+	},
+	append	=> sub {
+		require ParallelExec::Adder;
+		return &ParallelExec::Adder::append;
+	},
+	wait	=> sub {
+		require ParallelExec::Status;
+		exit &ParallelExec::Status::wait;
+	},
+	status	=> sub {
+		require ParallelExec::Status;
+		return &ParallelExec::Status::status;
+	},
+	help	=> sub {
+		require ParallelExec::Status;
+		return &ParallelExec::Status::help;
+	},
+
+	server	=> sub {
+		require ParallelExec::Server;
+		return &ParallelExec::Server::start;
+	},
+
+	worker	=> sub {
+		require ParallelExec::Worker;
+		return &ParallelExec::Worker::start;
+	},
+);
+
+die "pexec: Command required, try: pexec help\n"
+	unless @ARGV;
+my $cmd = shift @ARGV;
+$cmd =~ s/^--?//;
+die "pexec: No command $cmd\n"
+	unless exists $arg_cmds{ $cmd };
+
+my $func = $arg_cmds{ $cmd };
+&$func( @ARGV );
