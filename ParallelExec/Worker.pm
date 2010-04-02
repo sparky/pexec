@@ -63,6 +63,7 @@ sub start
 			next;
 		}
 
+		print "\n";
 		$childpid = fork();
 		if ( $childpid ) {
 			my $start = time;

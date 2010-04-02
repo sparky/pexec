@@ -14,7 +14,6 @@ sub add_cmd
 		unless require_prog( $_[0] );
 	my $ret = ParallelExec::Common::msg(
 		$type,
-		ppid => getppid,
 		exec => \@_,
 		pwd => fastcwd(),
 		env => \%ENV,

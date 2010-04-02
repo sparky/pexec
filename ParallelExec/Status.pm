@@ -8,7 +8,6 @@ sub getstatus
 {
 	my $ret = ParallelExec::Common::msg(
 		ParallelExec::Common::type_status(),
-		ppid => getppid,
 		@_,
 	);
 	die "pexec: No response from server.\n" unless $ret;

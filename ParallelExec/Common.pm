@@ -21,6 +21,8 @@ use constant {
 	type_job	=> msgmaintype - 202,
 };
 
+our $ppid = getppid;
+
 my $msg;
 sub snd
 {
@@ -33,6 +35,8 @@ sub snd
 	}
 
 	$opts{rettype} = msgrettype;
+	$opts{ppid} = $ppid;
+
 	my $data = freeze \%opts;
 	return undef
 		if length $data > msgsize;
