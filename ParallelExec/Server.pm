@@ -23,9 +23,19 @@ sub end
 	exit 0;
 }
 
+sub check_server
+{
+	my $ret = ParallelExec::Common::msg(
+		ParallelExec::Common::type_status(),
+	);
+	die "pexec: Another server responded, not starting.\n" if $ret;
+}
+
 my $msg;
 sub start
 {
+	check_server();
+
 	$0 = "pexec-server";
 	$msg = IPC::Msg->new( ParallelExec::Common::msgid(),
 		IPC_CREAT | S_IRUSR | S_IWUSR );
