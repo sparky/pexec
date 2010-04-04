@@ -6,7 +6,6 @@ use ParallelExec::Common;
 
 use IPC::SysV qw(S_IRUSR S_IWUSR IPC_CREAT IPC_NOWAIT);
 use IPC::Msg ();
-use Storable qw(freeze thaw);
 
 my %cmds = (
 	ParallelExec::Common::type_add()	=> \&srv_add,
@@ -46,6 +45,7 @@ sub start
 		$SIG{$signame} = \&end;
 	}
 
+	# eat all messages left
 	{
 		my $data;
 		my $type;
@@ -57,7 +57,6 @@ sub start
 				IPC_NOWAIT
 			);
 		} while ( defined $type );
-
 	}
 
 	for (;;) {
@@ -74,7 +73,7 @@ sub start
 			warn "pexecserver: Wrong type $type\n";
 			next;
 		}
-		my $data_in_obj = thaw $data_in;
+		my $data_in_obj = ParallelExec::Common::data2obj( $data_in );
 		my $data_out_obj = &$func( $data_in_obj );
 		respond( $data_in_obj->{rettype}, $data_out_obj )
 			if defined $data_out_obj;
@@ -87,7 +86,7 @@ sub respond
 {
 	my $rettype = shift;
 	my $data_out_obj = shift;
-	my $data_out = freeze $data_out_obj;
+	my $data_out = ParallelExec::Common::obj2data( $data_out_obj );
 	$msg->snd( $rettype, $data_out, 0 );
 }
 

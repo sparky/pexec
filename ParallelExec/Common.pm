@@ -21,6 +21,33 @@ use constant {
 	type_job	=> msgmaintype - 202,
 };
 
+sub obj2data
+{
+	my $obj = shift;
+	my $data = freeze( $obj );
+	if ( length $data > msgsize ) {
+		require Compress::Zlib;
+		$data = Compress::Zlib::compress( $data, 9 );
+		if ( length $data > msgsize ) {
+			warn "snd: compressed \$data to big, aborting\n";
+			return undef;
+		}
+	}
+	return $data;
+}
+
+sub data2obj
+{
+	my $data = shift;
+	return undef unless defined $data;
+	if ( "x" eq substr $data, 0, 1 ) {
+		# compressed
+		require Compress::Zlib;
+		$data = Compress::Zlib::uncompress( $data );
+	}
+	return thaw( $data );
+}
+
 our $ppid = getppid;
 
 my $msg;
@@ -37,11 +64,8 @@ sub snd
 	$opts{rettype} = msgrettype;
 	$opts{ppid} = $ppid;
 
-	my $data = freeze \%opts;
-	if ( length $data > msgsize ) {
-		warn "snd: \$data to big, cannot send\n";
-		return undef;
-	}
+	my $data = obj2data \%opts;
+	return undef unless $data;
 
 	$msg->snd( $type, $data, IPC_NOWAIT )
 		or return undef;
@@ -56,8 +80,7 @@ sub rcv
 
 	my $buf;
 	my $rettype = $msg->rcv( $buf, msgsize, msgrettype, 0 );
-	return undef unless $buf;
-	return thaw $buf;
+	return data2obj $buf;
 }
 
 sub msg
