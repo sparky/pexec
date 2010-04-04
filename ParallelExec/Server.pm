@@ -19,6 +19,7 @@ my $try_start = 0;
 
 sub end
 {
+	warn "Terminating server\n";
 	exit 0;
 }
 
@@ -50,7 +51,7 @@ sub start
 	die "Cannot start message queue: $!\n" unless $msg;
 	$msg->set( qbytes => 32 * ParallelExec::Common::msgsize() );
 
-	foreach my $signame ( qw(INT KILL) ) {
+	foreach my $signame ( qw(TERM INT KILL STOP) ) {
 		$SIG{$signame} = \&end;
 	}
 

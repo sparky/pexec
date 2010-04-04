@@ -18,11 +18,25 @@ sub printc
 }
 
 my $childpid = undef;
+my $lastsigtime = 0;
+my $lastsig = "";
 sub end
 {
+	my $sig = shift;
 	if ( defined $childpid ) {
-		kill shift, $childpid
+		kill $sig, $childpid
 			and return;
+	} else {
+		my $time = time;
+		if ( $lastsig eq $sig and $lastsigtime >= $time - 5 ) {
+			warn "Signal $sig received.\n";
+			exit 0;
+		} else {
+			warn "Send signal $sig within 5 seconds to terminate worker.\n";
+			$lastsig = $sig;
+			$lastsigtime = $time;
+			return;
+		}
 	}
 	exit 0;
 }
@@ -42,7 +56,7 @@ sub start
 	$0 = "pexec-worker $ret->{worker}";
 	printc green, "Started worker $ret->{worker}";
 
-	foreach my $signame ( qw(INT KILL) ) {
+	foreach my $signame ( qw(TERM INT STOP HUP KILL) ) {
 		$SIG{$signame} = \&end;
 	}
 
@@ -54,8 +68,11 @@ sub start
 			%opts
 		);
 		my $ret = ParallelExec::Common::rcv();
-		die "pexec: no response from server\n"
-			unless $ret;
+		unless ( $ret ) {
+			die "pexec: no response from server\n"
+				unless $lastsigtime >= time() - 1;
+			next;
+		}
 
 		#exit $ret->{exit} if exists $ret->{exit};
 		unless ( exists $ret->{exec} ) {
