@@ -41,7 +41,6 @@ sub wait
 sub status
 {
 	my $ret = getstatus( full => 1 );
-	die "pexec: No response from server.\n" unless $ret;
 	print "pexec: Status:\n";
 	foreach my $k ( sort keys %$ret ) {
 		print "\t$k\t=> $ret->{$k}\n";

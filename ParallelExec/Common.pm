@@ -38,8 +38,10 @@ sub snd
 	$opts{ppid} = $ppid;
 
 	my $data = freeze \%opts;
-	return undef
-		if length $data > msgsize;
+	if ( length $data > msgsize ) {
+		warn "snd: \$data to big, cannot send\n";
+		return undef;
+	}
 
 	$msg->snd( $type, $data, IPC_NOWAIT )
 		or return undef;
