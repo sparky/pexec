@@ -43,7 +43,11 @@ sub status
 	my $ret = getstatus( full => 1 );
 	print "pexec: Status:\n";
 	foreach my $k ( sort keys %$ret ) {
-		print "\t$k\t=> $ret->{$k}\n";
+		print "$k:\n";
+		my $h = $ret->{$k};
+		foreach my $k ( sort keys %$h ) {
+			print "\t$k\t=> $h->{$k}\n";
+		}
 	}
 }
 

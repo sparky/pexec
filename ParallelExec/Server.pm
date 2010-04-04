@@ -35,7 +35,16 @@ sub start
 {
 	check_server();
 
+	my $fork = fork;
+	if ( not defined $fork ) {
+		die "Fork failed\n";
+	} elsif ( $fork ) {
+		print "pexec server started on pid $fork\n";
+		exit;
+	}
+
 	$0 = "pexec-server";
+
 	$msg = IPC::Msg->new( ParallelExec::Common::msgid(),
 		IPC_CREAT | S_IRUSR | S_IWUSR );
 	die "Cannot start message queue: $!\n" unless $msg;
@@ -102,6 +111,15 @@ my @queue;
 my %last_by_pid;
 
 my %stat_by_pid;
+sub getstat
+{
+	my $pid = shift;
+	return $stat_by_pid{ $pid } ||= {
+		failed => 0,	failedall => 0,
+		jobs => 0,	jobsall => 0,
+		done => 0,	doneall => 0,
+	};
+}
 
 sub srv_add
 {
@@ -109,14 +127,9 @@ sub srv_add
 	my $in = shift; # {exec} {env} {pwd} {ppid}
 	my $pid = $in->{ppid};
 	$last_by_pid{ $pid } = $in;
-	$stat_by_pid{ $pid } ||= {
-		failed => 0, failedall => 0,
-		jobs => 0, jobsall => 0,
-		done => 0, doneall => 0,
-	};
 	push @queue, $in;
-	$stat_by_pid{ $pid }->{jobs}++;
-	$stat_by_pid{ $pid }->{jobsall}++;
+	my $stat = getstat( $pid );
+	$stat->{jobs}++;
 	$try_start = 1;
 	return { added => 1 }; # {added}
 }
@@ -133,8 +146,8 @@ sub srv_append
 	$in->{depends} = $last_by_pid{ $pid };
 	$last_by_pid{ $pid } = $in;
 	push @queue, $in;
-	$stat_by_pid{ $pid }->{jobs}++;
-	$stat_by_pid{ $pid }->{jobsall}++;
+	my $stat = getstat( $pid );
+	$stat->{jobs}++;
 	$try_start = 1;
 	return { added => 1 }; # {added}
 
@@ -143,23 +156,16 @@ sub srv_append
 sub srv_status
 {
 	my $in = shift; # {ppid} ({full}) ({reset})
-	my $stat = $stat_by_pid{ $in->{ppid} };
+	my $stat = getstat( $in->{ppid} );
 	if ( $in->{reset} ) {
-		$stat->{jobs} = 0;
-		$stat->{failed} = 0;
-		$stat->{done} = 0;
-	}
-	return $stat || {}; # unless $in->{full};
-
-	my @all = qw(jobsall failedall doneall);
-	my %stat;
-	@stat{ @all } = (0, 0, 0);
-	foreach my $s ( values %stat_by_pid ) {
-		foreach my $all ( @all ) {
-			$stat{ $all } += $s->{ $all };
+		foreach my $t ( qw(jobs failed done) ) {
+			$stat->{ $t . "all" } += $stat->{ $t };
+			$stat->{ $t } = 0;
 		}
 	}
-	return \%stat;
+	return $stat unless $in->{full};
+
+	return \%stat_by_pid;
 }
 
 sub srv_worker
@@ -196,14 +202,7 @@ sub srv_job
 
 
 	if ( defined $worker->{job} ) {
-		$worker->{job}->{ret} = $in->{ret};
-		my $stat = $stat_by_pid{ $worker->{job}->{ppid} };
-		$stat->{done}++;
-		$stat->{doneall}++;
-		if ( $in->{ret} ) {
-			$stat->{failed}++;
-			$stat->{failedall}++;
-		}
+		endjob( $worker->{job}, $in->{ret} );
 	}
 
 	if ( my $job = nextjob() ) {
@@ -214,6 +213,18 @@ sub srv_job
 		$worker->{rettype} = $in->{rettype};
 		return undef;
 	}
+}
+
+sub endjob
+{
+	my $job = shift;
+	my $ret = shift;
+	$ret //= -1;
+
+	$job->{ret} = $ret;
+	my $stat = getstat( $job->{ppid} );
+	$stat->{done}++;
+	$stat->{failed}++ if $ret;
 }
 
 sub nextjob
