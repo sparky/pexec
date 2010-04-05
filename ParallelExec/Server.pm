@@ -75,8 +75,17 @@ sub start
 			$data_in,
 			ParallelExec::Common::msgsize(),
 			-ParallelExec::Common::msgmaintype(),
-			0
+			IPC_NOWAIT
 		);
+		unless ( $data_in ) {
+			idle_checks();
+			$type = $msg->rcv(
+				$data_in,
+				ParallelExec::Common::msgsize(),
+				-ParallelExec::Common::msgmaintype(),
+				0
+			);
+		}
 		next unless $data_in;
 		my $func = $cmds{ $type };
 		unless ( $func ) {
@@ -257,6 +266,31 @@ sub try_start_new_job
 		$worker->{job} = $job;
 		respond( $worker->{rettype}, $job );
 	}
+}
+
+
+sub ispidalive
+{
+	my $pid = shift;
+	return -d "/proc/$pid";
+}
+
+sub check_workers
+{
+	foreach my $pid ( keys %workers ) {
+		next if ispidalive( $pid );
+		my $worker = $workers{ $pid };
+		warn "Worker $worker->{worker} died !\n";
+		if ( my $job = $worker->{job} ) {
+			unshift @queue, $job;
+		}
+		delete $workers{ $pid };
+	}
+}
+
+sub idle_checks
+{
+	check_workers();
 }
 
 1;
