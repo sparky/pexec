@@ -33,7 +33,16 @@ USAGE:
 
 TODO:
 - fix "pexec append"
+  --> done, I think
 - more robust workers; make sure workers are alive, restart job if worker dies
 - add "pexec set -e" - it should kill all remaining jobs from ppid and not
   allow new ones until "pexec wait"
-- allow longer commands / env
+- allow longer commands / larger environment
+  --> partially done (uses zlib compression)
+- pexec add/append should be able to return [internal pid]
+- add "pexec kill [pid]" command, where pid is [internal pid], "parent" or "killall"
+- add possibility to suggest resources usage when adding commands, this way
+  the just right number of processes will be running to use it at 100%
+  eg: -c25 - uses 25% of cpu (1 core in 4 core cpu),
+      -n80 - uses 80% of network
+      -h90 - uses 90% of hard drives
