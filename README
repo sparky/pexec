@@ -35,6 +35,7 @@ TODO:
 - fix "pexec append"
   --> done, I think
 - more robust workers; make sure workers are alive, restart job if worker dies
+  --> done, but could check more often
 - add "pexec set -e" - it should kill all remaining jobs from ppid and not
   allow new ones until "pexec wait"
 - allow longer commands / larger environment
