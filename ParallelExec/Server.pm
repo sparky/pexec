@@ -282,7 +282,10 @@ sub check_workers
 		my $worker = $workers{ $pid };
 		warn "Worker $worker->{worker} died !\n";
 		if ( my $job = $worker->{job} ) {
+			warn "Readding its job to queue\n";
+			delete $job->{ret};
 			unshift @queue, $job;
+			$try_start = 1;
 		}
 		delete $workers{ $pid };
 	}
