@@ -117,7 +117,7 @@ END {
 }
 
 my %workers;
-my @queue;
+my %queue;
 my %last_by_pid;
 
 my %stat_by_pid;
@@ -137,7 +137,9 @@ sub srv_add
 	my $in = shift; # {exec} {env} {pwd} {ppid}
 	my $pid = $in->{ppid};
 	$last_by_pid{ $pid } = $in;
-	push @queue, $in;
+	my $prio = $in->{prio} || 0;
+	$queue{ $prio } ||= [];
+	push @{ $queue{ $prio } }, $in;
 	my $stat = getstat( $pid );
 	$stat->{jobs}++;
 	$try_start = 1;
@@ -155,7 +157,9 @@ sub srv_append
 
 	$in->{depends} = $last_by_pid{ $pid };
 	$last_by_pid{ $pid } = $in;
-	push @queue, $in;
+	my $prio = $in->{prio} || 0;
+	$queue{ $prio } ||= [];
+	push @{ $queue{ $prio } }, $in;
 	my $stat = getstat( $pid );
 	$stat->{jobs}++;
 	$try_start = 1;
@@ -239,14 +243,19 @@ sub endjob
 
 sub nextjob
 {
-	return undef unless @queue;
+	return undef unless keys %queue;
 
-	my $end = scalar @queue;
-	for ( my $i = 0; $i < $end; $i++ ) {
-		my $job = $queue[ $i ];
-		if ( not $job->{depends} or defined $job->{depends}->{ret} ) {
-			splice @queue, $i, 1;
-			return $job;
+	foreach my $prio ( sort { $a <=> $b } keys %queue ) {
+
+		my $queue = $queue{ $prio };
+		my $end = scalar @$queue;
+		for ( my $i = 0; $i < $end; $i++ ) {
+			my $job = $queue->[ $i ];
+			if ( not $job->{depends} or defined $job->{depends}->{ret} ) {
+				splice @$queue, $i, 1;
+				delete $queue{ $prio } unless scalar @$queue;
+				return $job;
+			}
 		}
 	}
 	return undef;
@@ -256,7 +265,7 @@ sub try_start_new_job
 {
 	$try_start = 0;
 
-	return undef unless @queue;
+	return undef unless keys %queue;
 
 	my @freeworkers = grep { not exists $_->{job} } values %workers;
 	return unless @freeworkers;
@@ -284,7 +293,9 @@ sub check_workers
 		if ( my $job = $worker->{job} ) {
 			warn "Readding its job to queue\n";
 			delete $job->{ret};
-			unshift @queue, $job;
+			my $prio = -100000;
+			$queue{ $prio } ||= [];
+			push @{ $queue{ $prio } }, $job;
 			$try_start = 1;
 		}
 		delete $workers{ $pid };
