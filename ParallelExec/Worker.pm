@@ -113,6 +113,8 @@ sub exec_command
 	printc blue, "[$pwd]\$\033[0;37m @$exec";
 	delete @ENV{ keys %ENV };
 	@ENV{ keys %$env } = values %$env;
+	system "renice", $ret->{nice}, $$ if $ret->{nice};
+	system "ionice", "-n", $ret->{ionice}, "-p", $$ if $ret->{ionice};
 	exec { $exec->[0] } @$exec;
 	die "pexec: Execution failed: $!\n";
 }
