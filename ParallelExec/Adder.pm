@@ -8,15 +8,32 @@ use Cwd qw(fastcwd abs_path);
 my $type;
 sub add_cmd
 {
+	my %o;
+	while ( $_[0] =~ /^-([a-zA-Z])(.+)/ ) {
+		$o{ $1 } = $2;
+		shift @_;
+	}
 	die "pexec: command missing\n"
 		unless scalar @_;
 	die "pexec: $_[0]: command not found\n"
 		unless require_prog( $_[0] );
+
+	my %opts;
+	if ( exists $o{n} ) {
+		$opts{nice} = $o{n};
+	}
+	if ( exists $o{i} ) {
+		$opts{ionice} = $o{i};
+	}
+	if ( exists $o{p} ) {
+		$opts{prio} = $o{p};
+	}
 	my $ret = ParallelExec::Common::msg(
 		$type,
 		exec => \@_,
 		pwd => fastcwd(),
 		env => \%ENV,
+		%opts
 	);
 	if ( $ret and $ret->{added} ) {
 		#warn "pexec: Added job to server.\n";
